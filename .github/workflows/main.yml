@@ -1,0 +1,66 @@
+name: Build & Deploy with Helm
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  RELEASE_NAME: k8s-lab
+  CHART_PATH: ./fiber-k8s
+  VALUES_FILE: ./fiber-k8s/values-dev.yaml
+  NAMESPACE: default
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set image tag (short SHA)
+        run: echo "IMAGE_TAG=${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+      - name: Set image name (lowercase for GHCR)
+        run: |
+          REPO_LC="$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
+          echo "IMAGE_NAME=ghcr.io/${REPO_LC}/k8s-lab" >> $GITHUB_ENV
+
+      - name: Login to GitHub Container Registry
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Build & Push Docker image
+        run: |
+          docker build -t $IMAGE_NAME:$IMAGE_TAG ./app
+          docker push $IMAGE_NAME:$IMAGE_TAG
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Setup kubeconfig
+        run: |
+          echo "${{ secrets.KUBECONFIG_B64 }}" | base64 -d > kubeconfig
+          echo "KUBECONFIG=$PWD/kubeconfig" >> $GITHUB_ENV
+
+      - name: Sanity check (helm lint & template)
+        run: |
+          helm lint $CHART_PATH
+          helm template $RELEASE_NAME $CHART_PATH -f $VALUES_FILE > /dev/null
+
+      - name: Deploy to Kubernetes with Helm
+        run: |
+          helm upgrade --install $RELEASE_NAME $CHART_PATH \
+            -n $NAMESPACE --create-namespace \
+            -f $VALUES_FILE \
+            --set image.repository=$IMAGE_NAME \
+            --set image.tag=$IMAGE_TAG \
+            --atomic --wait --timeout 5m
