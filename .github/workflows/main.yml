@@ -13,7 +13,6 @@ env:
   RELEASE_NAME: k8s-lab
   CHART_PATH: ./fiber-k8s
   VALUES_FILE: ./fiber-k8s/values-dev.yaml
-  IMAGE_NAME: ghcr.io/${{ github.repository }}/k8s-lab
   NAMESPACE: default
 
 jobs:
@@ -26,6 +25,11 @@ jobs:
 
       - name: Set image tag (short SHA)
         run: echo "IMAGE_TAG=${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+      - name: Set image name (lowercase for GHCR)
+        run: |
+          REPO_LC="$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
+          echo "IMAGE_NAME=ghcr.io/${REPO_LC}/k8s-lab" >> $GITHUB_ENV
 
       - name: Login to GitHub Container Registry
         run: |
