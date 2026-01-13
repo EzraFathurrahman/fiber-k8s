@@ -1,23 +1,15 @@
-replicaCount: 4
+# values.yaml (base)
 
 image:
   repository: k8s-lab
   pullPolicy: IfNotPresent
-  tag: "2.0"
+  tag: ""   # diisi dari CI/CD via --set image.tag=...
 
-# Port yang didengerin container Fiber
 containerPort: 3000
 
-service:
-  type: NodePort
-  port: 80
-  nodePort: 30001
-
-# DATABASE_URL akan dipakai oleh templates/secret.yaml
 database:
   url: postgres://appuser:secret@postgres:5432/appdb?sslmode=disable
 
-# Probes: liveness & readiness ke endpoint Fiber
 livenessProbe:
   httpGet:
     path: /health/live
@@ -32,7 +24,6 @@ readinessProbe:
   initialDelaySeconds: 10
   periodSeconds: 10
 
-# Optional: matiin service account kalau gak butuh RBAC
 serviceAccount:
   create: false
 
@@ -44,6 +35,9 @@ ingress:
 httpRoute:
   enabled: false
 
+autoscaling:
+  enabled: false
+
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
@@ -53,12 +47,6 @@ podLabels: {}
 
 podSecurityContext: {}
 securityContext: {}
-
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 10
-  targetCPUUtilizationPercentage: 80
 
 volumes: []
 volumeMounts: []
