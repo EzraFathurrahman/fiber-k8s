@@ -7,6 +7,10 @@ image:
 
 containerPort: 3000
 
+service:
+  type: ClusterIP
+  port: 3000
+
 database:
   url: postgres://appuser:secret@postgres:5432/appdb?sslmode=disable
 
